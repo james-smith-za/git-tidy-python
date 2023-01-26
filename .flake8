@@ -1,0 +1,12 @@
+[flake8]
+max-line-length = 120
+exclude = .venv
+
+# specify which checks to enable
+select =
+	C, # complexity checks
+	E, # pep8 errors
+	F, # pyflakes fatals
+	W, # pep8 warnings
+	B, # bugbear checks for design issues (requires flake8-bugbear)
+	N  # pep8 naming (requires pep8-naming)
