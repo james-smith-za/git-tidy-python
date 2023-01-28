@@ -26,7 +26,8 @@ Then when you `cd` to your git repository, you can type
 ```bash
 git tidy
 ```
-and it'll do its thing!
+and it'll do its thing! Only the Python standard library is used, no additional
+packages are required.
 
 ## Background
 
