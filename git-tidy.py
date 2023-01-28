@@ -10,7 +10,7 @@
 
 # You should have received a copy of the GNU General Public License along with git-tidy. If not, see
 # <https://www.gnu.org/licenses/>.
-"""git-tidy module."""
+"""git-tidy utility."""
 
 import subprocess
 import sys
@@ -54,11 +54,22 @@ def run(command: Union[List[str], str]) -> Tuple[int, str]:
 
 
 def get_default_branch() -> str:
-    """Return the name of the repo's default branch."""
+    """Return the name of the repo's default branch.
+
+    First try the config, if that doesn't work, check existing branches for
+    some common defaults. If there aren't any or they're ambiguous, ask the
+    user.
+
+    Returns
+    -------
+    str
+        The name of the default branch with which we'll work for the rest of
+        the exercise.
+    """
     returncode, configured_default_branch = run(["git", "config", "--get", "--local", "tidy.defaultbranch"])
     if returncode == 128:
         # The --local flag caused this to fail because we're not in a git repository.
-        print(configured_default_branch, file=sys.stderr)
+        print("fatal: not inside a repository", file=sys.stderr)
         sys.exit(returncode)
 
     # If we're in a repository, we need a list of branches, either as a
@@ -77,13 +88,13 @@ def get_default_branch() -> str:
             return configured_default_branch
 
         print(
-            f"{configured_default_branch} configured as defauly branch for tidying purposes, but it doesn't exist!",
+            f"{configured_default_branch} configured as default branch for tidying purposes, but it doesn't exist! "
+            "Attempting to reconfigure....",
             file=sys.stderr,
         )
-        # TODO: There is probably a clean way to fix this.
-        sys.exit(-1)
 
-    print("No default branch for git-tidy configured, will try to figure out which to use...")
+    else:
+        print("No default branch for git-tidy configured, will try to figure out which to use...")
 
     candidates = []
 
@@ -94,27 +105,24 @@ def get_default_branch() -> str:
 
     if len(candidates) == 1:
         # Only one branch name matches, so we'll go with that one.
+        print(f"Using branch {candidates[0]}...")
         run(["git", "config", "--add", "tidy.defaultbranch", candidates[0]])
         return candidates[0]
 
-    if len(candidates) == 0:
-        print("No candidate branches!", file=sys.stderr)
-        sys.exit(-1)
-
-    # If we don't have one or zero, which do we have?
+    # If there's no clear default, let the user select which one to use:
     selection = -1
     while (selection < 0) or (selection >= len(candidates)):
-        print(
-            f"{'Several' if len(candidates) > 1 else 'No'}  potential default branch candidates found. "
-            "Please select one:"
-        )
-        for n, candidate in enumerate(candidates):
-            print(f"{n}: {candidate}")
+        print("Unable to determine default branch automatically. Please select one:")
+        for n, branch in enumerate(branch_list):
+            print(f"{n}: {branch}")
 
-        # TODO: This breaks if the user is stupid and doesn't input an int.
-        selection = int(input("Which to choose?"))
+        raw_input = input("Which to choose?")
+        try:
+            selection = int(raw_input)
+        except ValueError:
+            continue
 
-    return candidates[selection]
+    return branch_list[selection]
 
 
 if __name__ == "__main__":
@@ -125,14 +133,19 @@ if __name__ == "__main__":
 
     # Check which remote it's configured with.
     _, remote = run(["git", "config", "--get", f"branch.{default_branch}.remote"])
-
-    print(f"{default_branch} is configured for remote {remote}")
+    print(f"{default_branch} is connected to {remote}")
 
     # Get latest changes from remote, clear up unnecessary stuff.
-    run(["git", "fetch", "--all", "--prune"])
-    run(
-        ["git", "merge", "--ff-only", f"{remote}/{default_branch}", default_branch]
-    )  # TODO: Handle what happens if the ff fails.
+    returncode, output = run(["git", "fetch", "--all", "--prune"])
+    if returncode != 0:  # possibly a problem in contacting the remote?
+        print(output, file=sys.stderr)
+        sys.exit(returncode)
+    print(output)  # I like to see what `git fetch` has accomplished.
+
+    returncode, output = run(["git", "merge", "--ff-only", f"{remote}/{default_branch}", default_branch])
+    if returncode != 0:  # Probably fast-forwarding won't work.
+        print(output, file=sys.stderr)
+        sys.exit(returncode)
 
     # Check which branches are `--merged` and clean them up.
     _, merged_branches_raw = run(["git", "branch", "--merged"])
