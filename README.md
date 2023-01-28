@@ -17,6 +17,19 @@ git branch --merged | grep -v main | xargs git branch -d
 
 with some extra convenience and (I hope) safety features.
 
+## Using
+
+The actual script is named `git-tidy`. After cloning, you can copy (or symlink)
+it to somewhere on your path (I use `~/bin/`).
+
+Then when you `cd` to your git repository, you can type
+```bash
+git tidy
+```
+and it'll do its thing!
+
+## Background
+
 The repo is named with `-python` on the end because I have a vague ambition to
 redo this program in Go at some point, which will make it easier to distribute
 for people who don't have Python installed by default (i.e. Windows users). But
