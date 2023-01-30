@@ -111,7 +111,7 @@ def get_default_branch() -> str:
 
     # If there's no clear default, let the user select which one to use:
     selection = -1
-    while (selection < 0) or (selection >= len(candidates)):
+    while (selection < 0) or (selection >= len(branch_list)):
         print("Unable to determine default branch automatically. Please select one:")
         for n, branch in enumerate(branch_list):
             print(f"{n}: {branch}")
